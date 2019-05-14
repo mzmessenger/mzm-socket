@@ -92,7 +92,7 @@ async function read() {
       '$'
     )
     if (res) {
-      for (const [key, val] of res) {
+      for (const [, val] of res) {
         for (const [id, messages] of val) {
           try {
             const receive = JSON.parse(messages[1]) as ReceiveQueue
