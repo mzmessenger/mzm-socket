@@ -1,6 +1,6 @@
 import WebSocket from 'ws'
 import request from 'request'
-import { SOCKET_LISTEN, SOCKET_REQUEST_URL } from './config'
+import { SOCKET_LISTEN, INTERNAL_API_URL } from './config'
 import logger from './lib/logger'
 import redis from './lib/redis'
 
@@ -15,14 +15,13 @@ async function requestSocketAPI(data: Object | string, user: string) {
     body: typeof data === 'string' ? data : JSON.stringify(data)
   }
   return new Promise((resolve, reject) => {
-    request.post(SOCKET_REQUEST_URL, options, (err, res, body) => {
+    request.post(INTERNAL_API_URL, options, (err, res, body) => {
       if (err) {
-        logger.error('[post]', SOCKET_REQUEST_URL, err, res, body)
         return reject(err)
       }
       logger.info(
         '[post:response]',
-        SOCKET_REQUEST_URL,
+        INTERNAL_API_URL,
         data,
         res.statusCode,
         body
@@ -39,7 +38,7 @@ redis.on('connect', async () => {
     port: SOCKET_LISTEN
   })
 
-  wss.on('connection', function connection(ws, req) {
+  wss.on('connection', async function connection(ws, req) {
     const user: string = req.headers['x-user-id'] as string
     if (!user) {
       ws.close()
@@ -52,13 +51,19 @@ redis.on('connect', async () => {
       cmd: 'socket:connection',
       payload: { user, twitterUserName }
     }
-    requestSocketAPI(data, user)
+    requestSocketAPI(data, user).catch(e => {
+      logger.error('[post:error]', e)
+    })
 
-    ws.on('message', function incoming(message) {
+    ws.on('message', async function incoming(message) {
       if (message === 'pong') {
         return
       }
-      requestSocketAPI(message, user)
+      try {
+        await requestSocketAPI(message, user)
+      } catch (e) {
+        logger.error('[post:error]', e)
+      }
     })
 
     ws.on('close', function close() {
