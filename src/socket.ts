@@ -1,57 +1,41 @@
 import WebSocket from 'ws'
-import request from 'request'
-import { SOCKET_LISTEN, INTERNAL_API_URL } from './config'
+import uuid from 'uuid/v4'
+import { SOCKET_LISTEN } from './config'
 import logger from './lib/logger'
 import redis from './lib/redis'
+import { requestSocketAPI } from './lib/request'
+import { saveSocket, removeSocket } from './lib/sender'
+import { consume } from './lib/consumer'
+import { ExtWebSocket } from './types'
 
 type PostData = {
   cmd: 'socket:connection'
   payload: { user: string; twitterUserName: string }
 }
 
-async function requestSocketAPI(data: Object | string, user: string) {
-  const options = {
-    headers: { 'Content-type': 'application/json', 'x-user-id': user },
-    body: typeof data === 'string' ? data : JSON.stringify(data)
-  }
-  return new Promise((resolve, reject) => {
-    request.post(INTERNAL_API_URL, options, (err, res, body) => {
-      if (err) {
-        return reject(err)
-      }
-      logger.info(
-        '[post:response]',
-        INTERNAL_API_URL,
-        data,
-        res.statusCode,
-        body
-      )
-      resolve(body)
-    })
-  })
-}
-
-const users: { [key: string]: WebSocket } = {}
-
 redis.on('connect', async () => {
   const wss = new WebSocket.Server({
     port: SOCKET_LISTEN
   })
 
-  wss.on('connection', async function connection(ws, req) {
+  consume()
+
+  wss.on('connection', async function connection(ws: ExtWebSocket, req) {
     const user: string = req.headers['x-user-id'] as string
     if (!user) {
       ws.close()
       return
     }
-    users[user] = ws
+    const id = uuid()
+    ws.id = id
+    saveSocket(id, user, ws)
     const twitterUserName = req.headers['x-twitter-user-name'] as string
 
     const data: PostData = {
       cmd: 'socket:connection',
       payload: { user, twitterUserName }
     }
-    requestSocketAPI(data, user).catch(e => {
+    requestSocketAPI(data, user, id).catch(e => {
       logger.error('[post:error]', e)
     })
 
@@ -60,15 +44,15 @@ redis.on('connect', async () => {
         return
       }
       try {
-        await requestSocketAPI(message, user)
+        await requestSocketAPI(message, user, id)
       } catch (e) {
         logger.error('[post:error]', e)
       }
     })
 
     ws.on('close', function close() {
-      logger.info('closed:', user)
-      delete users[user]
+      logger.info('closed:', user, ws.id)
+      removeSocket(ws.id, user)
     })
   })
 
@@ -78,44 +62,3 @@ redis.on('connect', async () => {
     })
   }, 60000)
 })
-
-type ReceiveQueue = {
-  user: string
-  cmd: string
-}
-
-async function read() {
-  const READ_STREAM = 'stream:socket:message'
-  try {
-    const res = await redis.xread(
-      'BLOCK',
-      '500',
-      'COUNT',
-      '1',
-      'STREAMS',
-      READ_STREAM,
-      '$'
-    )
-    if (res) {
-      for (const [, val] of res) {
-        for (const [id, messages] of val) {
-          try {
-            const receive = JSON.parse(messages[1]) as ReceiveQueue
-            if (receive.user && !users[receive.user]) {
-              return
-            }
-            users[receive.user].send(JSON.stringify(receive))
-            logger.info('[send:message]', id, receive)
-            await redis.xdel(READ_STREAM, id)
-          } catch (e) {
-            logger.error('parse error', e, id, messages)
-          }
-        }
-      }
-    }
-  } catch (e) {
-    logger.error('[read]', 'stream:socket:message', e)
-  }
-  read()
-}
-read()
