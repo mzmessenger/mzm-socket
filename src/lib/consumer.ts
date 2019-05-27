@@ -8,8 +8,33 @@ type ReceiveQueue = {
   cmd: string
 }
 
+const READ_STREAM = 'stream:socket:message'
+
+export async function parser(read) {
+  if (!read) {
+    return
+  }
+
+  for (const [, val] of read) {
+    for (const [id, messages] of val) {
+      try {
+        const queue = JSON.parse(messages[1]) as ReceiveQueue
+
+        if (queue.user) {
+          sendToUser(queue.user, queue)
+          await redis.xdel(READ_STREAM, id)
+        } else if (queue.socket) {
+          sendToSocket(queue.socket, queue)
+          await redis.xdel(READ_STREAM, id)
+        }
+      } catch (e) {
+        logger.error('parse error', e, id, messages)
+      }
+    }
+  }
+}
+
 export async function consume() {
-  const READ_STREAM = 'stream:socket:message'
   try {
     const res = await redis.xread(
       'BLOCK',
@@ -20,26 +45,9 @@ export async function consume() {
       READ_STREAM,
       '0'
     )
-    if (res) {
-      for (const [, val] of res) {
-        for (const [id, messages] of val) {
-          try {
-            const queue = JSON.parse(messages[1]) as ReceiveQueue
-            if (queue.user) {
-              sendToUser(queue.user, queue)
-              await redis.xdel(READ_STREAM, id)
-            } else if (queue.socket) {
-              sendToSocket(queue.socket, queue)
-              await redis.xdel(READ_STREAM, id)
-            }
-          } catch (e) {
-            logger.error('parse error', e, id, messages)
-          }
-        }
-      }
-    }
+    await parser(res)
   } catch (e) {
     logger.error('[read]', 'stream:socket:message', e)
   }
-  consume()
+  await consume()
 }

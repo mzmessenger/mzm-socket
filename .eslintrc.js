@@ -1,6 +1,6 @@
 module.exports = {
   extends: ['eslint:recommended', 'plugin:prettier/recommended'],
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'jest'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 2019,
@@ -8,7 +8,8 @@ module.exports = {
   },
   env: {
     es6: true,
-    node: true
+    node: true,
+    'jest/globals': true
   },
   rules: {
     'no-console': 'error',

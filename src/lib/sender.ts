@@ -4,6 +4,11 @@ import logger from './logger'
 const sockets = new Map<string, ExtWebSocket>()
 const users = new Map<string, ExtWebSocket[]>()
 
+export function clear() {
+  sockets.clear()
+  users.clear()
+}
+
 export function saveSocket(id: string, user: string, ws: ExtWebSocket) {
   sockets.set(id, ws)
 
