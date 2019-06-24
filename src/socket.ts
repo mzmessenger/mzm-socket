@@ -60,5 +60,5 @@ redis.on('connect', async () => {
     wss.clients.forEach(ws => {
       ws.send('ping')
     })
-  }, 60000)
+  }, 50000)
 })
