@@ -21,11 +21,15 @@ export async function parser(read) {
         const queue = JSON.parse(messages[1]) as ReceiveQueue
 
         if (queue.user) {
-          sendToUser(queue.user, queue)
-          await redis.xdel(READ_STREAM, id)
+          const sentFlg = sendToUser(queue.user, queue)
+          if (sentFlg) {
+            await redis.xdel(READ_STREAM, id)
+          }
         } else if (queue.socket) {
-          sendToSocket(queue.socket, queue)
-          await redis.xdel(READ_STREAM, id)
+          const sentFlg = sendToSocket(queue.socket, queue)
+          if (sentFlg) {
+            await redis.xdel(READ_STREAM, id)
+          }
         }
       } catch (e) {
         logger.error('parse error', e, id, messages)
@@ -36,15 +40,7 @@ export async function parser(read) {
 
 export async function consume() {
   try {
-    const res = await redis.xread(
-      'BLOCK',
-      '500',
-      'COUNT',
-      '1',
-      'STREAMS',
-      READ_STREAM,
-      '0'
-    )
+    const res = await redis.xread('COUNT', '1', 'STREAMS', READ_STREAM, '0')
     await parser(res)
   } catch (e) {
     logger.error('[read]', 'stream:socket:message', e)

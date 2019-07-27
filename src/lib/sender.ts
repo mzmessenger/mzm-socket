@@ -27,20 +27,22 @@ export function removeSocket(id: string, user: string) {
   users.set(user, list)
 }
 
-export function sendToUser(user: string, payload: Object) {
+export function sendToUser(user: string, payload: Object): boolean {
   if (!users.has(user)) {
-    return
+    return false
   }
   const sockets = users.get(user)
   sockets.forEach(s => s.send(JSON.stringify(payload)))
   logger.info('[send:message:user]', user, payload)
+  return true
 }
 
-export function sendToSocket(socket: string, payload: Object) {
+export function sendToSocket(socket: string, payload: Object): boolean {
   if (!sockets.has(socket)) {
-    return
+    return false
   }
   delete payload['socket']
   sockets.get(socket).send(JSON.stringify(payload))
   logger.info('[send:message:socket]', socket, payload)
+  return true
 }
