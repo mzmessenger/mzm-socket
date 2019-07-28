@@ -1,6 +1,6 @@
 import redis from './redis'
 import logger from './logger'
-import { sendToUser, sendToSocket } from './sender'
+import { sendToUser } from './sender'
 
 type ReceiveQueue = {
   user?: string
@@ -19,17 +19,9 @@ export async function parser(read) {
     for (const [id, messages] of val) {
       try {
         const queue = JSON.parse(messages[1]) as ReceiveQueue
-
         if (queue.user) {
-          const sentFlg = sendToUser(queue.user, queue)
-          if (sentFlg) {
-            await redis.xdel(READ_STREAM, id)
-          }
-        } else if (queue.socket) {
-          const sentFlg = sendToSocket(queue.socket, queue)
-          if (sentFlg) {
-            await redis.xdel(READ_STREAM, id)
-          }
+          sendToUser(queue.user, queue)
+          await redis.xdel(READ_STREAM, id)
         }
       } catch (e) {
         logger.error('parse error', e, id, messages)

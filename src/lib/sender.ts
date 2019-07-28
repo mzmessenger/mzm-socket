@@ -36,13 +36,3 @@ export function sendToUser(user: string, payload: Object): boolean {
   logger.info('[send:message:user]', user, payload)
   return true
 }
-
-export function sendToSocket(socket: string, payload: Object): boolean {
-  if (!sockets.has(socket)) {
-    return false
-  }
-  delete payload['socket']
-  sockets.get(socket).send(JSON.stringify(payload))
-  logger.info('[send:message:socket]', socket, payload)
-  return true
-}

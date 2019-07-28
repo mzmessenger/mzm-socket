@@ -45,23 +45,32 @@ if (cluster.isMaster) {
       }
       const id = uuid()
       ws.id = id
-      saveSocket(id, user, ws)
+      await saveSocket(id, user, ws)
       const twitterUserName = req.headers['x-twitter-user-name'] as string
 
       const data: PostData = {
         cmd: 'socket:connection',
         payload: { user, twitterUserName }
       }
-      requestSocketAPI(data, user, id).catch(e => {
-        logger.error('[post:error]', e)
-      })
+      requestSocketAPI(data, user, id)
+        .then(data => {
+          if (data) {
+            ws.send(data)
+          }
+        })
+        .catch(e => {
+          logger.error('[post:error]', e)
+        })
 
       ws.on('message', async function incoming(message) {
         if (message === 'pong') {
           return
         }
         try {
-          await requestSocketAPI(message, user, id)
+          const data = await requestSocketAPI(message, user, id)
+          if (data) {
+            ws.send(data)
+          }
         } catch (e) {
           logger.error('[post:error]', e)
         }
@@ -70,6 +79,10 @@ if (cluster.isMaster) {
       ws.on('close', function close() {
         logger.info('closed:', user, ws.id)
         removeSocket(ws.id, user)
+      })
+
+      ws.on('error', function error(e) {
+        logger.error('error: ', e)
       })
     })
 
