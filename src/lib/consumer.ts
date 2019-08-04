@@ -15,27 +15,41 @@ export async function parser(read) {
     return
   }
 
+  let nextId = null
+
   for (const [, val] of read) {
     for (const [id, messages] of val) {
+      nextId = id
       try {
         const queue = JSON.parse(messages[1]) as ReceiveQueue
         if (queue.user) {
           sendToUser(queue.user, queue)
-          await redis.xdel(READ_STREAM, id)
         }
       } catch (e) {
         logger.error('parse error', e, id, messages)
       }
     }
   }
+
+  return nextId
 }
 
-export async function consume() {
+export async function consume(startId: string = '$') {
+  let nextId = startId ? startId : '$'
+
   try {
-    const res = await redis.xread('COUNT', '1', 'STREAMS', READ_STREAM, '0')
-    await parser(res)
+    const res = await redis.xread(
+      'BLOCK',
+      '0',
+      'COUNT',
+      '100',
+      'STREAMS',
+      READ_STREAM,
+      startId
+    )
+    nextId = await parser(res)
   } catch (e) {
     logger.error('[read]', 'stream:socket:message', e)
   }
-  await consume()
+  await consume(nextId)
 }

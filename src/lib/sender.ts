@@ -1,37 +1,37 @@
 import { ExtWebSocket } from '../types'
 import logger from './logger'
 
-const sockets = new Map<string, ExtWebSocket>()
-const users = new Map<string, ExtWebSocket[]>()
+const socketMap = new Map<string, ExtWebSocket>()
+const userMap = new Map<string, ExtWebSocket[]>()
 
 export function clear() {
-  sockets.clear()
-  users.clear()
+  socketMap.clear()
+  userMap.clear()
 }
 
 export function saveSocket(id: string, user: string, ws: ExtWebSocket) {
-  sockets.set(id, ws)
+  socketMap.set(id, ws)
 
-  if (users.has(user)) {
-    const list = users.get(user)
+  if (userMap.has(user)) {
+    const list = userMap.get(user)
     list.push(ws)
-    users.set(user, list)
+    userMap.set(user, list)
   } else {
-    users.set(user, [ws])
+    userMap.set(user, [ws])
   }
 }
 
 export function removeSocket(id: string, user: string) {
-  sockets.delete(id)
-  const list = users.get(user).filter(e => e.id !== id)
-  users.set(user, list)
+  socketMap.delete(id)
+  const list = userMap.get(user).filter(e => e.id !== id)
+  userMap.set(user, list)
 }
 
-export function sendToUser(user: string, payload: Object): boolean {
-  if (!users.has(user)) {
+export function sendToUser(user: string, payload: Object) {
+  if (!userMap.has(user)) {
     return false
   }
-  const sockets = users.get(user)
+  const sockets = userMap.get(user)
   sockets.forEach(s => s.send(JSON.stringify(payload)))
   logger.info('[send:message:user]', user, payload)
   return true

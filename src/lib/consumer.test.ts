@@ -17,21 +17,34 @@ import { parser } from './consumer'
 test('parser sendToUser', async () => {
   sendToUser.mockClear()
 
-  const user = '5cc9d148139370d11b706624'
-  const queue = JSON.stringify({
-    cmd: 'cmd',
-    user: user
+  const users = ['5cc9d148139370d11b706624', '5cc9d148139370d11b706625']
+  const queues = users.map(user => {
+    return JSON.stringify({
+      cmd: 'cmd',
+      user: user
+    })
   })
 
   const read = [
-    ['stream:socket:message', [['1558972034751-0', ['message', queue]]]]
+    [
+      'stream:socket:message',
+      [
+        ['1558972034751-0', ['message', queues[0]]],
+        ['1558972034751-1', ['message', queues[1]]]
+      ]
+    ]
   ]
 
-  await parser(read)
+  const nextId = await parser(read)
 
-  expect(sendToUser.mock.calls.length).toBe(1)
+  expect(sendToUser.mock.calls.length).toBe(users.length)
+  const messagses = read[0][1]
+  const [lastId] = messagses[messagses.length - 1]
+  expect(nextId).toStrictEqual(lastId)
 
-  const [toUser, payload] = sendToUser.mock.calls[0]
-  expect(toUser).toEqual(user)
-  expect(JSON.stringify(payload)).toEqual(queue)
+  for (let i = 0; i < users.length; i++) {
+    const [toUser, payload] = sendToUser.mock.calls[i]
+    expect(toUser).toEqual(users[i])
+    expect(JSON.stringify(payload)).toEqual(queues[i])
+  }
 })
