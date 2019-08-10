@@ -51,5 +51,8 @@ export async function consume(startId: string = '$') {
   } catch (e) {
     logger.error('[read]', 'stream:socket:message', e)
   }
+  if (!nextId) {
+    nextId = '$'
+  }
   await consume(nextId)
 }
