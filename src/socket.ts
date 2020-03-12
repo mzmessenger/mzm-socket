@@ -1,6 +1,6 @@
 import cluster from 'cluster'
 import WebSocket from 'ws'
-import uuid from 'uuid/v4'
+import { v4 as uuid } from 'uuid'
 import { WORKER_NUM, SOCKET_LISTEN } from './config'
 import logger from './lib/logger'
 import redis from './lib/redis'
@@ -45,7 +45,7 @@ if (cluster.isMaster) {
       }
       const id = uuid()
       ws.id = id
-      await saveSocket(id, user, ws)
+      saveSocket(id, user, ws)
       const twitterUserName = req.headers['x-twitter-user-name'] as string
 
       const data: PostData = {
