@@ -53,12 +53,12 @@ if (cluster.isMaster) {
         payload: { user, twitterUserName }
       }
       requestSocketAPI(data, user, id)
-        .then(data => {
+        .then((data) => {
           if (data) {
             ws.send(data)
           }
         })
-        .catch(e => {
+        .catch((e) => {
           logger.error('[post:error]', e)
         })
 
@@ -87,7 +87,7 @@ if (cluster.isMaster) {
     })
 
     setInterval(() => {
-      wss.clients.forEach(ws => {
+      wss.clients.forEach((ws) => {
         ws.send('ping')
       })
     }, 50000)

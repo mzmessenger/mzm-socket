@@ -23,7 +23,7 @@ export function saveSocket(id: string, user: string, ws: ExtWebSocket) {
 
 export function removeSocket(id: string, user: string) {
   socketMap.delete(id)
-  const list = userMap.get(user).filter(e => e.id !== id)
+  const list = userMap.get(user).filter((e) => e.id !== id)
   userMap.set(user, list)
 }
 
@@ -32,7 +32,7 @@ export function sendToUser(user: string, payload: Object) {
     return false
   }
   const sockets = userMap.get(user)
-  sockets.forEach(s => s.send(JSON.stringify(payload)))
+  sockets.forEach((s) => s.send(JSON.stringify(payload)))
   logger.info('[send:message:user]', user, payload)
   return true
 }

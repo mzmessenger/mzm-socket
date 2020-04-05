@@ -18,7 +18,7 @@ test('parser sendToUser', async () => {
   sendToUser.mockClear()
 
   const users = ['5cc9d148139370d11b706624', '5cc9d148139370d11b706625']
-  const queues = users.map(user => {
+  const queues = users.map((user) => {
     return JSON.stringify({
       cmd: 'cmd',
       user: user
