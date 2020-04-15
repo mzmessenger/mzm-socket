@@ -10,7 +10,7 @@ type ReceiveQueue = {
 
 const READ_STREAM = 'stream:socket:message'
 
-export async function parser(read) {
+export const parser = async (read) => {
   if (!read) {
     return
   }
@@ -34,7 +34,7 @@ export async function parser(read) {
   return nextId
 }
 
-export async function consume(startId: string = '$') {
+export const consume = async (startId: string = '$') => {
   let nextId = startId ? startId : '$'
 
   try {

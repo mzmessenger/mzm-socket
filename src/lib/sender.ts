@@ -4,12 +4,12 @@ import logger from './logger'
 const socketMap = new Map<string, ExtWebSocket>()
 const userMap = new Map<string, ExtWebSocket[]>()
 
-export function clear() {
+export const clear = () => {
   socketMap.clear()
   userMap.clear()
 }
 
-export function saveSocket(id: string, user: string, ws: ExtWebSocket) {
+export const saveSocket = (id: string, user: string, ws: ExtWebSocket) => {
   socketMap.set(id, ws)
 
   if (userMap.has(user)) {
@@ -21,13 +21,13 @@ export function saveSocket(id: string, user: string, ws: ExtWebSocket) {
   }
 }
 
-export function removeSocket(id: string, user: string) {
+export const removeSocket = (id: string, user: string) => {
   socketMap.delete(id)
   const list = userMap.get(user).filter((e) => e.id !== id)
   userMap.set(user, list)
 }
 
-export function sendToUser(user: string, payload: Object) {
+export const sendToUser = (user: string, payload: Object) => {
   if (!userMap.has(user)) {
     return false
   }
