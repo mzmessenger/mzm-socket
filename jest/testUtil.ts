@@ -1,3 +1,3 @@
-export function getMockType(arg) {
+export const getMockType = (arg) => {
   return <jest.Mock<typeof arg>>arg
 }

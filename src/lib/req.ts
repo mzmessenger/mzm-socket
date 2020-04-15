@@ -3,11 +3,11 @@ import { INTERNAL_API_URL } from '../config'
 import logger from './logger'
 
 // todo: retry
-export async function requestSocketAPI(
+export const requestSocketAPI = async (
   data: Object | string,
   user: string,
   id: string
-) {
+) => {
   const options = {
     headers: {
       'Content-type': 'application/json',
