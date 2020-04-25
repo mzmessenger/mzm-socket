@@ -25,7 +25,7 @@ if (cluster.isMaster) {
     cluster.fork()
   })
 } else {
-  redis.on('connect', async () => {
+  redis.on('ready', async () => {
     const wss = new WebSocket.Server(
       {
         port: SOCKET_LISTEN
