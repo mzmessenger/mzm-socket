@@ -25,71 +25,75 @@ if (cluster.isMaster) {
     cluster.fork()
   })
 } else {
-  redis.on('ready', async () => {
-    const wss = new WebSocket.Server(
-      {
-        port: SOCKET_LISTEN
-      },
-      () => {
-        logger.info('Listening on', SOCKET_LISTEN)
-      }
-    )
+  redis
+    .on('ready', async () => {
+      const wss = new WebSocket.Server(
+        {
+          port: SOCKET_LISTEN
+        },
+        () => {
+          logger.info('Listening on', SOCKET_LISTEN)
+        }
+      )
 
-    consume()
+      consume()
 
-    wss.on('connection', async function connection(ws: ExtWebSocket, req) {
-      const user: string = req.headers['x-user-id'] as string
-      if (!user) {
-        ws.close()
-        return
-      }
-      const id = uuid()
-      ws.id = id
-      saveSocket(id, user, ws)
-      const twitterUserName = req.headers['x-twitter-user-name'] as string
-
-      const data: PostData = {
-        cmd: 'socket:connection',
-        payload: { user, twitterUserName }
-      }
-      requestSocketAPI(data, user, id)
-        .then((data) => {
-          if (data) {
-            ws.send(data)
-          }
-        })
-        .catch((e) => {
-          logger.error('[post:error]', e)
-        })
-
-      ws.on('message', async function incoming(message) {
-        if (message === 'pong') {
+      wss.on('connection', async function connection(ws: ExtWebSocket, req) {
+        const user: string = req.headers['x-user-id'] as string
+        if (!user) {
+          ws.close()
           return
         }
-        try {
-          const data = await requestSocketAPI(message, user, id)
-          if (data) {
-            ws.send(data)
-          }
-        } catch (e) {
-          logger.error('[post:error]', e)
+        const id = uuid()
+        ws.id = id
+        saveSocket(id, user, ws)
+        const twitterUserName = req.headers['x-twitter-user-name'] as string
+
+        const data: PostData = {
+          cmd: 'socket:connection',
+          payload: { user, twitterUserName }
         }
+        requestSocketAPI(data, user, id)
+          .then((data) => {
+            if (data) {
+              ws.send(data)
+            }
+          })
+          .catch((e) => {
+            logger.error('[post:error]', e)
+          })
+
+        ws.on('message', async function incoming(message) {
+          if (message === 'pong') {
+            return
+          }
+          try {
+            const data = await requestSocketAPI(message, user, id)
+            if (data) {
+              ws.send(data)
+            }
+          } catch (e) {
+            logger.error('[post:error]', e)
+          }
+        })
+
+        ws.on('close', function close() {
+          logger.info('closed:', user, ws.id)
+          removeSocket(ws.id, user)
+        })
+
+        ws.on('error', function error(e) {
+          logger.error('error: ', e)
+        })
       })
 
-      ws.on('close', function close() {
-        logger.info('closed:', user, ws.id)
-        removeSocket(ws.id, user)
-      })
-
-      ws.on('error', function error(e) {
-        logger.error('error: ', e)
-      })
+      setInterval(() => {
+        wss.clients.forEach((ws) => {
+          ws.send('ping')
+        })
+      }, 50000)
     })
-
-    setInterval(() => {
-      wss.clients.forEach((ws) => {
-        ws.send('ping')
-      })
-    }, 50000)
-  })
+    .on('error', (e) => {
+      logger.error(e)
+    })
 }
