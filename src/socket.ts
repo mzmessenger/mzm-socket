@@ -14,7 +14,7 @@ type PostData = {
   payload: { user: string; twitterUserName: string }
 }
 
-if (cluster.isMaster) {
+if (cluster.isPrimary) {
   for (let i = 0; i < WORKER_NUM; i++) {
     cluster.fork()
   }
@@ -63,7 +63,8 @@ if (cluster.isMaster) {
             logger.error('[post:error]', e)
           })
 
-        ws.on('message', async function incoming(message) {
+        ws.on('message', async function incoming(_message) {
+          const message = _message.toString()
           if (message === 'pong') {
             return
           }
