@@ -1,34 +1,34 @@
-import request from 'request'
+import { request } from 'undici'
 import { INTERNAL_API_URL } from '../config'
 import logger from './logger'
 
 // todo: retry
 export const requestSocketAPI = async (
-  data: Object | string,
+  body: string,
   user: string,
   id: string
 ) => {
-  const options = {
+  const options: Parameters<typeof request>[1] = {
     headers: {
       'Content-type': 'application/json',
       'x-user-id': user,
       'x-socket-id': id
     },
-    body: typeof data === 'string' ? data : JSON.stringify(data)
+    method: 'POST',
+    body: body
   }
-  return new Promise((resolve, reject) => {
-    request.post(INTERNAL_API_URL, options, (err, res, body) => {
-      if (err) {
-        return reject(err)
-      }
-      logger.info(
-        '[post:response]',
-        INTERNAL_API_URL,
-        data,
-        res.statusCode,
-        body
-      )
-      resolve(body)
-    })
-  })
+
+  const res = await request(INTERNAL_API_URL, options)
+
+  const resBody = res.statusCode === 200 ? await res.body.text() : null
+
+  logger.info(
+    '[post:response]',
+    INTERNAL_API_URL,
+    body,
+    res.statusCode,
+    resBody
+  )
+
+  return { body: resBody }
 }

@@ -53,25 +53,25 @@ if (cluster.isPrimary) {
           cmd: 'socket:connection',
           payload: { user, twitterUserName }
         }
-        requestSocketAPI(data, user, id)
-          .then((data) => {
-            if (data) {
-              ws.send(data)
+        requestSocketAPI(JSON.stringify(data), user, id)
+          .then(({ body }) => {
+            if (body) {
+              ws.send(body)
             }
           })
           .catch((e) => {
             logger.error('[post:error]', e)
           })
 
-        ws.on('message', async function incoming(_message) {
-          const message = _message.toString()
+        ws.on('message', async function incoming(data) {
+          const message = data.toString()
           if (message === 'pong') {
             return
           }
           try {
-            const data = await requestSocketAPI(message, user, id)
-            if (data) {
-              ws.send(data)
+            const res = await requestSocketAPI(message, user, id)
+            if (res.body) {
+              ws.send(res.body)
             }
           } catch (e) {
             logger.error('[post:error]', e)
