@@ -1,18 +1,20 @@
-jest.mock('./logger')
-jest.mock('./redis', () => {
+import { vi, test, expect } from 'vitest'
+vi.mock('./logger.js')
+vi.mock('./redis.js', () => {
   return {
-    xread: jest.fn(),
-    xdel: jest.fn()
+    redis: {
+      xread: vi.fn(),
+      xdel: vi.fn()
+    }
   }
 })
 
-jest.mock('./sender')
-import { getMockType } from '../../jest/testUtil'
-import * as sender from './sender'
+vi.mock('./sender.js')
+import * as sender from './sender.js'
 
-const sendToUser = getMockType(sender.sendToUser)
+const sendToUser = vi.mocked(sender.sendToUser)
 
-import { parser } from './consumer'
+import { parser } from './consumer.js'
 
 test('parser sendToUser', async () => {
   sendToUser.mockClear()

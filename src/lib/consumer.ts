@@ -1,6 +1,6 @@
-import redis from './redis'
-import logger from './logger'
-import { sendToUser } from './sender'
+import { redis } from './redis.js'
+import { logger } from './logger.js'
+import { sendToUser } from './sender.js'
 
 type ReceiveQueue = {
   user?: string
@@ -10,7 +10,8 @@ type ReceiveQueue = {
 
 const READ_STREAM = 'stream:socket:message'
 
-export const parser = async (read) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const parser = async (read: any) => {
   if (!read) {
     return
   }
@@ -22,6 +23,10 @@ export const parser = async (read) => {
       nextId = id
       try {
         const queue = JSON.parse(messages[1]) as ReceiveQueue
+        logger.info({
+          label: 'queue',
+          message: queue
+        })
         if (queue.user) {
           sendToUser(queue.user, queue)
         }
@@ -34,22 +39,30 @@ export const parser = async (read) => {
   return nextId
 }
 
-export const consume = async (startId: string = '$') => {
+export const consume = async (startId = '$') => {
+  logger.info({
+    label: 'consume',
+    message: `consume ${startId}`
+  })
   let nextId = startId ? startId : '$'
 
   try {
-    const res = await redis.xread(
-      'BLOCK',
-      '0',
+    const res = await redis().xread(
       'COUNT',
       '100',
+      'BLOCK',
+      '0',
       'STREAMS',
       READ_STREAM,
       startId
     )
     nextId = await parser(res)
   } catch (e) {
-    logger.error('[read]', 'stream:socket:message', e)
+    logger.error({
+      label: 'consume',
+      message: 'error',
+      err: e
+    })
   }
   if (!nextId) {
     nextId = '$'

@@ -1,27 +1,51 @@
-import { INTERNAL_API_URL } from '../config'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { vi, test, expect } from 'vitest'
+import { request } from 'undici'
+import { INTERNAL_API_URL } from '../config.js'
 
-jest.mock('./logger')
-
-const post = jest.fn((url, options, callback) => {
-  callback(null, { statusCode: 200 }, 'body')
+vi.mock('./logger.js')
+vi.mock('../lib/token.js', () => {
+  return {
+    createInternalAccessToken: vi
+      .fn()
+      .mockResolvedValue('internal-access-token')
+  }
 })
 
-jest.mock('request', () => ({ post }))
+vi.mock('undici', async () => {
+  return {
+    request: vi.fn((_url, _options) => {
+      return new Promise((resolve) => {
+        resolve({
+          statusCode: 200,
+          body: {
+            text: () => 'response text'
+          }
+        })
+      })
+    })
+  }
+})
 
-import { requestSocketAPI } from './req'
+import { requestSocketAPI } from './req.js'
 
 test('requestSocketAPI', async () => {
   const user = 'user-id'
   const socket = 'socket-id'
 
-  const message = { message: 'message' }
+  const message = 'message'
+
+  const requestMock = vi.mocked(request)
 
   await requestSocketAPI(message, user, socket)
 
-  expect(post.mock.calls.length).toBe(1)
-  const [url, options] = post.mock.calls[0]
+  expect(requestMock.mock.calls.length).toBe(1)
+  const [url, options] = requestMock.mock.calls[0]
   expect(url).toStrictEqual(INTERNAL_API_URL)
-  expect(options.headers['x-user-id']).toStrictEqual(user)
-  expect(options.headers['x-socket-id']).toStrictEqual(socket)
-  expect(options.body).toStrictEqual(JSON.stringify(message))
+  expect((options!.headers! as any)['x-user-id']).toStrictEqual(user)
+  expect((options!.headers! as any)['x-socket-id']).toStrictEqual(socket)
+  expect((options!.headers! as any)['Authorization']).toStrictEqual(
+    `Bearer internal-access-token`
+  )
+  expect(options?.body).toStrictEqual(message)
 })

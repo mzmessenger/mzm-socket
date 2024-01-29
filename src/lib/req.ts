@@ -1,34 +1,40 @@
-import request from 'request'
-import { INTERNAL_API_URL } from '../config'
-import logger from './logger'
+import { request } from 'undici'
+import { HEADERS } from 'mzm-shared/src/auth/constants'
+import { INTERNAL_API_URL } from '../config.js'
+import { logger } from './logger.js'
+import { createInternalAccessToken } from '../lib/token.js'
 
 // todo: retry
 export const requestSocketAPI = async (
-  data: Object | string,
+  body: string,
   user: string,
   id: string
 ) => {
-  const options = {
+  const token = await createInternalAccessToken()
+  const options: Parameters<typeof request>[1] = {
     headers: {
       'Content-type': 'application/json',
-      'x-user-id': user,
-      'x-socket-id': id
+      [HEADERS.USER_ID]: user,
+      'x-socket-id': id,
+      Authorization: `Bearer ${token}`
     },
-    body: typeof data === 'string' ? data : JSON.stringify(data)
+    method: 'POST',
+    body: body,
+    bodyTimeout: 1000 * 60 * 5,
+    headersTimeout: 1000 * 60 * 5
   }
-  return new Promise((resolve, reject) => {
-    request.post(INTERNAL_API_URL, options, (err, res, body) => {
-      if (err) {
-        return reject(err)
-      }
-      logger.info(
-        '[post:response]',
-        INTERNAL_API_URL,
-        data,
-        res.statusCode,
-        body
-      )
-      resolve(body)
-    })
+
+  const res = await request(INTERNAL_API_URL, options)
+
+  const resBody = res.statusCode === 200 ? await res.body.text() : null
+
+  logger.info({
+    label: 'post:response',
+    url: INTERNAL_API_URL,
+    send: body,
+    status: res.statusCode,
+    body: resBody
   })
+
+  return { body: resBody }
 }
